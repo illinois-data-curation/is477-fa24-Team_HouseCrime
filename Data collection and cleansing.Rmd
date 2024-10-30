@@ -1,0 +1,175 @@
+---
+title: "Data collection & cleansing"
+author: "Cheng"
+date: "2024-10-16"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(httr)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+```
+
+
+```{r get_and_write_data}
+crime_data <- read_csv("Crimes_2001_to_Present.csv", show_col_types = FALSE)
+
+glimpse(crime_data)
+
+crime_data_clean <- crime_data %>%
+  drop_na(Location, Longitude, Latitude)
+
+write_csv(crime_data_clean, "Cleaned_Crimes_2001_to_2024.csv")
+```
+
+```{r read_data}
+
+zillow_data <- read_csv("Zip_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv")
+
+chicago_zips <- c('60601', '60602', '60603', '60604', '60605', '60606', '60607', '60608', '60609', '60610', 
+                  '60611', '60612', '60613', '60614', '60615', '60616', '60618', '60619', '60620', '60621', 
+                  '60622', '60623', '60624', '60625', '60626', '60628', '60629', '60630', '60631', '60632', 
+                  '60633', '60634', '60636', '60637', '60638', '60639', '60640', '60641', '60642', '60643', 
+                  '60644', '60645', '60646', '60647', '60649', '60651', '60652', '60653', '60654', '60655', 
+                  '60656', '60657', '60659', '60660', '60661')
+
+chicago_House_data <- zillow_data %>%
+  filter(RegionName %in% chicago_zips)
+
+write_csv(chicago_House_data, "chicago_house_data.csv")
+```
+```{r}
+library(sf)
+
+crime_data <- crime_data_clean
+
+crime_data_clean <- crime_data %>%
+  drop_na(Latitude, Longitude)
+
+crime_points <- crime_data_clean %>%
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326)
+
+zipcode_boundaries <- st_read("tl_2022_us_zcta520.shp")
+
+if (st_crs(zipcode_boundaries) != st_crs(crime_points)) {
+  zipcode_boundaries <- st_transform(zipcode_boundaries, st_crs(crime_points))
+}
+
+crime_with_zipcode <- st_join(crime_points, zipcode_boundaries, join = st_within)
+
+crime_with_zipcode_df <- as.data.frame(crime_with_zipcode)
+
+write_csv(crime_with_zipcode_df, "Crimes_with_Zipcodes.csv")
+
+```
+
+```{r}
+crime_data <- crime_with_zipcode
+
+crime_data <- crime_data %>%
+  mutate(
+    Year = year(mdy_hms(Date)), 
+    Month = month(mdy_hms(Date)) 
+  )
+
+crime_summary <- crime_data %>%
+  group_by(Year, Month, ZCTA5CE20) %>%
+  summarise(
+    crime_count = n(),                  
+    arrest_count = sum(Arrest, na.rm = TRUE), 
+    domestic_count = sum(Domestic, na.rm = TRUE),  
+    .groups = "drop"
+  )
+
+write_csv(crime_summary, "Crime_Summary_by_Zipcode_and_Month.csv")
+
+```
+
+```{r}
+house_data <- chicago_House_data
+
+house_data_long <- house_data %>%
+  pivot_longer(
+    cols = matches("^\\d{4}-\\d{2}-\\d{2}$"), 
+    names_to = "date",
+    values_to = "price"
+  ) %>%
+  mutate(
+    date = ymd(date),         
+    Year = year(date),         
+    Month = month(date)        
+  ) %>%
+  select(RegionName, RegionID, City, CountyName, Year, Month, price) 
+
+write_csv(house_data_long, "House_Price_Long_Format.csv")
+
+```
+
+```{r}
+house_data <- house_data_long
+crime_data <- crime_summary
+
+combined_data <- house_data %>%
+  rename(ZCTA5CE20 = RegionName) %>% 
+  left_join(crime_data, by = c("ZCTA5CE20", "Year", "Month"))
+
+
+write_csv(combined_data, "Combined_Chicago_Housing_Crime_Data.csv")
+
+
+```
+
+```{r}
+overall_trends <- combined_data %>%
+  group_by(Year, Month) %>%
+  summarise(
+    avg_price = mean(price, na.rm = TRUE),
+    avg_crime_count = mean(crime_count, na.rm = TRUE)
+  )
+
+ggplot(overall_trends, aes(x = as.Date(paste(Year, Month, "01", sep = "-")))) +
+  geom_line(aes(y = avg_price, color = "Average Housing Price")) +
+  geom_line(aes(y = avg_crime_count * 100, color = "Average Crime Count")) +  # Scale crime count if needed
+  labs(x = "Time", y = "Value", title = "Overall Trends in Housing Prices and Crime Rates") +
+  scale_color_manual(values = c("Average Housing Price" = "blue", "Average Crime Count" = "red"))
+```
+
+```{r}
+# Filter for key locations (e.g., top 3 locations with highest crime counts)
+top_locations <- combined_data %>%
+  group_by(ZCTA5CE20) %>%
+  summarise(total_crime = sum(crime_count, na.rm = TRUE)) %>%
+  top_n(3, wt = total_crime) %>%
+  pull(ZCTA5CE20)
+
+# Filter combined data for these top locations
+filtered_data <- combined_data %>%
+  filter(ZCTA5CE20 %in% top_locations)
+
+# Plot for selected locations
+ggplot(filtered_data, aes(x = as.Date(paste(Year, Month, "01", sep = "-")), group = ZCTA5CE20)) +
+  geom_line(aes(y = price, color = "Housing Price")) +
+  geom_line(aes(y = crime_count * 100, color = "Crime Count")) +  # Adjust scale if needed
+  labs(x = "Time", y = "Value", title = "Housing Price and Crime Rate Trends in Key Locations") +
+  scale_color_manual(values = c("Housing Price" = "blue", "Crime Count" = "red")) +
+  facet_wrap(~ ZCTA5CE20)  # Facet by each key location
+```
+
+```{r}
+# Heatmap for housing prices across all regions and time
+ggplot(combined_data, aes(x = Year + (Month - 1) / 12, y = ZCTA5CE20, fill = price)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(x = "Year", y = "Zipcode", fill = "Housing Price", title = "Heatmap of Housing Prices by Region and Time")
+
+# Heatmap for crime counts across all regions and time
+ggplot(combined_data, aes(x = Year + (Month - 1) / 12, y = ZCTA5CE20, fill = crime_count)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(x = "Year", y = "Zipcode", fill = "Crime Count", title = "Heatmap of Crime Rates by Region and Time")
+```
