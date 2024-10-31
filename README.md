@@ -277,9 +277,5 @@ The **Zillow Housing Rent Data** is obtained from [Zillow Research Data](https:/
 
 For exact usage terms and potential updates, please review Zillow’s licensing agreement on their website.
 
-### Project Code License
-
-The code in this repository is licensed under the **MIT License**, allowing free use, modification, and distribution with attribution. See the [LICENSE](LICENSE) file for full details.
-
 
 
