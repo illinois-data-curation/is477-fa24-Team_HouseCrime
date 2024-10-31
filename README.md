@@ -248,6 +248,38 @@ All generated outputs, including cleaned datasets, plots, and statistical summar
 3. **Interpretation**:
    - Use the insights gained from the visualizations and statistical summaries to interpret the relationship between crime rates and housing rents. Key results can guide urban planning, real estate investment, and policy decisions.
 
----
 
-This **Usage** section guides users through the process of running the project’s analysis, including preprocessing, exploratory analysis, main analysis, and viewing results. It is designed to make the workflow clear and structured for reproducibility.
+## License
+
+This project relies on data from external sources with distinct licensing terms:
+
+### 1. Chicago Crime Data (2001 - 2024)
+
+The **Chicago Crime Data** is sourced from the [City of Chicago Data Portal](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-Present/ijzp-q8t2/about_data) and is typically provided under a **Public Domain Dedication**.
+
+- **License**: This data is generally available under the **Open Data Commons Public Domain Dedication and License (PDDL)** or a similar public domain license, allowing free use, modification, and distribution without restrictions.
+- **Attribution**: While not required by the license, it is good practice to attribute the **City of Chicago** as the data provider.
+
+**Suggested Attribution**:
+> Data sourced from the City of Chicago Data Portal. Available at: [https://data.cityofchicago.org/](https://data.cityofchicago.org/).
+
+Please review the City of Chicago’s data portal terms to confirm any updates to their licensing or use terms.
+
+### 2. Zillow Housing Rent Data (2000 - 2024)
+
+The **Zillow Housing Rent Data** is obtained from [Zillow Research Data](https://www.zillow.com/research/data/). This data is subject to Zillow's data usage terms, typically restricted to non-commercial, research, and personal use only.
+
+- **License**: The data is available under **Zillow’s Data Licensing Agreement**, which limits its use to non-commercial and personal research. Redistribution or commercial use requires Zillow’s explicit permission.
+- **Attribution**: Proper attribution to **Zillow Research** is required for public use or referencing of their data.
+
+**Suggested Attribution**:
+> Housing rent data provided by Zillow Research. Available at: [https://www.zillow.com/research/data/](https://www.zillow.com/research/data/).
+
+For exact usage terms and potential updates, please review Zillow’s licensing agreement on their website.
+
+### Project Code License
+
+The code in this repository is licensed under the **MIT License**, allowing free use, modification, and distribution with attribution. See the [LICENSE](LICENSE) file for full details.
+
+
+
